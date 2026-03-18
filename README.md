@@ -46,13 +46,11 @@
 
 <div align="center">
 
-| البطاقة الرئيسية | Photo Preview Modal | لوحة التخصيص |
-|:-:|:-:|:-:|
-| ![Card](https://placehold.co/200x280/0a1628/d4a843?text=بطاقة+عيد) | ![Preview](https://placehold.co/200x280/0d1e38/00c9b1?text=Photo+Preview) | ![Controls](https://placehold.co/200x280/060e1c/f0cc6e?text=Controls) |
+| البطاقة الرئيسية | Photo Preview Modal |
+|:-:|:-:|
+| ![Card](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/1.png) | ![Preview](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/2.png) |
 
 </div>
-
-> 💡 استبدل الصور أعلاه بـ screenshots حقيقية من مشروعك لتحسين الـ README
 
 ---
 
