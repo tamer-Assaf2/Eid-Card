@@ -1050,9 +1050,10 @@ async function share(){
   preview.style.display = 'none';
   capturedBlob = null;
 
-  const testFile = new File([''], 'test.png', { type: 'image/png' });
-  const canNativeShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [testFile] }));
-  nativeBtn.style.display = canNativeShare ? 'flex' : 'none';
+  // Show share button on any mobile device with navigator.share
+  // Don't gate on canShare({files}) — it's buggy on many Android browsers
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  nativeBtn.style.display = (navigator.share && isMobile) ? 'flex' : 'none';
 
   try {
     const blob = await buildCardImage();
@@ -1249,26 +1250,30 @@ function buildCardImage(){
 
     /* ── Draw photo (or placeholder) then call drawContent ── */
     const cardImg = document.getElementById('card-img');
-    const hasPhoto = cardImg && cardImg.src && cardImg.style.display !== 'none'
-                     && !cardImg.src.endsWith(window.location.pathname);
+    const hasPhoto = cardImg && cardImg.style.display !== 'none' && imgSrc;
+    // Use imgSrc (original base64 from FileReader) — never cardImg.src
+    // cardImg.src is a processed dataURL but imgSrc is the raw base64 which
+    // is guaranteed to load without CORS/tainted-canvas issues on HTTPS.
 
     if(hasPhoto){
       const img = new Image();
       img.onload = () => {
         ctx.save();
         ctx.beginPath(); ctx.rect(0,0,CARD_W,PHOTO_H); ctx.clip();
+        // cover-fit: match the cropped view from applyPhoto
         const ir=img.width/img.height, zr=CARD_W/PHOTO_H;
         let dw,dh,dx,dy;
         if(ir>zr){ dh=PHOTO_H; dw=dh*ir; dx=(CARD_W-dw)/2; dy=0; }
         else      { dw=CARD_W; dh=dw/ir; dx=0; dy=(PHOTO_H-dh)/2; }
+        ctx.filter = `brightness(${brightness}%)`;
         ctx.drawImage(img,dx,dy,dw,dh);
+        ctx.filter = 'none';
         ctx.restore();
         drawContent();
       };
-      img.onerror = () => {
-        drawPlaceholder(); drawContent();
-      };
-      img.src = cardImg.src;
+      img.onerror = () => { drawPlaceholder(); drawContent(); };
+      // Use the original base64 source — avoids any tainted canvas issues
+      img.src = imgSrc;
     } else {
       drawPlaceholder(); drawContent();
     }
@@ -1298,13 +1303,28 @@ async function downloadCard(){
 }
 
 async function nativeShare(){
-  if(!capturedBlob) return;
+  if(!capturedBlob || !navigator.share) return;
+
   const file = new File([capturedBlob], 'بطاقة-عيد-مبارك.png', { type: 'image/png' });
-  if(!navigator.share || !navigator.canShare || !navigator.canShare({ files:[file] })){
-    downloadCard(); return;
+
+  // Strategy 1: try sharing the image file directly
+  try {
+    await navigator.share({ files: [file], title: 'بطاقة عيد مبارك' });
+    return; // success
+  } catch(err){
+    if(err.name === 'AbortError') return; // user cancelled — do nothing
+    // Share with file failed (device doesn't support) — try title-only share
   }
-  try { await navigator.share({ files:[file] }); }
-  catch(err){ if(err.name !== 'AbortError'){ console.error(err); downloadCard(); } }
+
+  // Strategy 2: share title only (no file, no URL) — opens share sheet at least
+  try {
+    await navigator.share({ title: 'بطاقة عيد مبارك', text: 'عيد مبارك 🌙' });
+  } catch(err){
+    if(err.name !== 'AbortError'){
+      // Everything failed — download as fallback
+      downloadCard();
+    }
+  }
 }
 
 function copyShareLink(){
