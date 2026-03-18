@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>بطاقة عيد مبارك</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root {
     --gold: #d4a843;
@@ -541,6 +543,120 @@
     box-shadow: 0 6px 20px rgba(0,201,177,0.25); letter-spacing: 1px;
   }
   .btn-apply:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,201,177,0.38); }
+
+  /* ══════════ SHARE MODAL ══════════ */
+  .share-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(14px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .share-backdrop.open { display: flex; }
+
+  .share-modal {
+    background: #0d1e38;
+    border: 1px solid rgba(212,168,67,0.25);
+    border-radius: 28px;
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(212,168,67,0.1);
+    animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .share-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .share-title { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+
+  .share-preview-wrap {
+    position: relative;
+    width: 100%;
+    background: #060e1c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    overflow: hidden;
+  }
+  #share-preview-img {
+    width: 100%;
+    display: block;
+    object-fit: contain;
+  }
+  .share-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: #060e1c;
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+  .share-loading.hidden { display: none; }
+  .share-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(212,168,67,0.2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .share-actions {
+    display: flex;
+    gap: 10px;
+    padding: 18px 20px 22px;
+    flex-wrap: wrap;
+  }
+  .share-btn {
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 10px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    letter-spacing: 0.5px;
+  }
+  .share-btn-download {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(0,201,177,0.25);
+  }
+  .share-btn-download:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,201,177,0.38); }
+  .share-btn-native {
+    background: linear-gradient(135deg, #d4a843, #8a6515);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(212,168,67,0.25);
+  }
+  .share-btn-native:hover { transform: translateY(-2px); }
+  .share-btn-copy {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.7);
+  }
+  .share-btn-copy:hover { background: rgba(255,255,255,0.1); color: #fff; }
 </style>
 </head>
 <body>
@@ -655,6 +771,34 @@
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">إلغاء</button>
       <button class="btn-apply" onclick="applyPhoto()">✓ تطبيق الصورة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SHARE MODAL ═══════════ -->
+<div class="share-backdrop" id="share-backdrop">
+  <div class="share-modal">
+    <div class="share-header">
+      <div class="share-title">📤 مشاركة البطاقة</div>
+      <button class="modal-close" onclick="closeShareModal()">✕</button>
+    </div>
+    <div class="share-preview-wrap">
+      <img id="share-preview-img" src="" alt="معاينة البطاقة">
+      <div class="share-loading" id="share-loading">
+        <div class="share-spinner"></div>
+        <span>جارٍ إنشاء الصورة...</span>
+      </div>
+    </div>
+    <div class="share-actions">
+      <button class="share-btn share-btn-download" onclick="downloadCard()">
+        <span>⬇️</span><span>تحميل الصورة</span>
+      </button>
+      <button class="share-btn share-btn-native" id="native-share-btn" onclick="nativeShare()" style="display:none">
+        <span>📤</span><span>مشاركة</span>
+      </button>
+      <button class="share-btn share-btn-copy" onclick="copyShareLink()">
+        <span>🔗</span><span id="copy-link-text">نسخ الرابط</span>
+      </button>
     </div>
   </div>
 </div>
@@ -886,17 +1030,131 @@ function applyPhoto(){
   tmpImg.src = imgSrc;
 }
 
-// ── share
-function share(){
-  if(navigator.share){
-    navigator.share({title:'بطاقة عيد مبارك', text:'عيد مبارك 🎉', url: location.href});
-  } else {
-    navigator.clipboard.writeText(location.href).then(()=>{
-      const btn = document.querySelector('.btn-share span');
-      btn.textContent = 'تم النسخ ✓';
-      setTimeout(()=>btn.textContent='مشاركة البطاقة',2000);
+// ══════════ SHARE WITH SCREENSHOT ══════════
+let capturedBlob = null;
+
+async function share(){
+  const backdrop  = document.getElementById('share-backdrop');
+  const loading   = document.getElementById('share-loading');
+  const preview   = document.getElementById('share-preview-img');
+  const nativeBtn = document.getElementById('native-share-btn');
+
+  // Reset modal state
+  backdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  loading.classList.remove('hidden');
+  loading.innerHTML = '<div class="share-spinner"></div><span>جارٍ إنشاء الصورة...</span>';
+  preview.style.display = 'none';
+  capturedBlob = null;
+
+  // Show native share only if browser supports FILE sharing specifically
+  // We test with a dummy blob — the real check happens before actual share
+  const testFile = new File([''], 'test.png', { type: 'image/png' });
+  const canNativeShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [testFile] }));
+  nativeBtn.style.display = canNativeShare ? 'flex' : 'none';
+
+  // --- Elements to HIDE during capture ---
+  const shareBtn   = document.querySelector('.btn-share');
+  const starsRow   = document.querySelector('.stars-row');
+
+  // Use data-html2canvas-ignore attribute — cleanest approach
+  const hideTargets = [shareBtn, starsRow].filter(Boolean);
+  hideTargets.forEach(el => el.setAttribute('data-html2canvas-ignore', 'true'));
+
+  try {
+    const card = document.getElementById('card');
+
+    const canvas = await html2canvas(card, {
+      useCORS:       true,
+      allowTaint:    false,
+      scale:         3,                  // ← high-res (3× pixel density)
+      backgroundColor: '#0a1628',
+      logging:       false,
+      imageTimeout:  8000,
+      onclone: (doc) => {
+        // Extra safety: hide btn-share inside the clone too
+        doc.querySelectorAll('[data-html2canvas-ignore]').forEach(el => {
+          el.style.visibility = 'hidden';
+        });
+      }
     });
+
+    canvas.toBlob(blob => {
+      capturedBlob = blob;
+      const url = URL.createObjectURL(blob);
+      preview.src = url;
+      preview.style.display = 'block';
+      loading.classList.add('hidden');
+    }, 'image/png', 1.0);
+
+  } catch(err){
+    console.error('Screenshot error:', err);
+    loading.innerHTML = '<span style="color:#ff8888;font-size:13px">⚠️ تعذّر التقاط الصورة</span>';
+  } finally {
+    // Always restore hidden elements
+    hideTargets.forEach(el => el.removeAttribute('data-html2canvas-ignore'));
   }
+}
+
+function closeShareModal(){
+  document.getElementById('share-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function downloadCard(){
+  if(!capturedBlob) return;
+  const url = URL.createObjectURL(capturedBlob);
+  const a   = document.createElement('a');
+  a.href     = url;
+  a.download = 'بطاقة-عيد-مبارك.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoke after a tick to allow download to start
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function nativeShare(){
+  if(!capturedBlob) return;
+
+  const file = new File([capturedBlob], 'بطاقة-عيد-مبارك.png', { type: 'image/png' });
+
+  // Only proceed if browser can actually share this file
+  if(!navigator.share || !navigator.canShare || !navigator.canShare({ files: [file] })){
+    // Fallback: just download the image
+    downloadCard();
+    return;
+  }
+
+  try {
+    // Share the image file ONLY — no text, no URL
+    await navigator.share({ files: [file] });
+  } catch(err){
+    if(err.name !== 'AbortError'){
+      console.error('Share error:', err);
+      // If sharing fails for any reason, fall back to download
+      downloadCard();
+    }
+  }
+}
+
+function copyShareLink(){
+  navigator.clipboard.writeText(location.href).then(()=>{
+    const el = document.getElementById('copy-link-text');
+    el.textContent = 'تم النسخ ✓';
+    setTimeout(() => el.textContent = 'نسخ الرابط', 2000);
+  }).catch(() => {
+    // Fallback for browsers that block clipboard without HTTPS
+    const ta = document.createElement('textarea');
+    ta.value = location.href;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const el = document.getElementById('copy-link-text');
+    el.textContent = 'تم النسخ ✓';
+    setTimeout(() => el.textContent = 'نسخ الرابط', 2000);
+  });
 }
 </script>
 </body>
