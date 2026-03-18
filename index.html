@@ -1037,6 +1037,7 @@ const CARD_W = 480;
 const CARD_H = 780;
 const DPR    = 2; // retina
 
+// زر المشاركة يفتح المودال ويبدأ بناء الصورة
 async function share(){
   const backdrop  = document.getElementById('share-backdrop');
   const loading   = document.getElementById('share-loading');
@@ -1049,19 +1050,23 @@ async function share(){
   loading.innerHTML = '<div class="share-spinner"></div><span>جارٍ إنشاء الصورة...</span>';
   preview.style.display = 'none';
   capturedBlob = null;
-
-  // Show share button on any mobile device with navigator.share
-  // Don't gate on canShare({files}) — it's buggy on many Android browsers
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  nativeBtn.style.display = (navigator.share && isMobile) ? 'flex' : 'none';
+  nativeBtn.style.display = 'none'; // يظهر بعد ما تجهز الصورة
 
   try {
     const blob = await buildCardImage();
     capturedBlob = blob;
+
+    // أظهر معاينة الصورة
     const url = URL.createObjectURL(blob);
     preview.src = url;
     preview.style.display = 'block';
     loading.classList.add('hidden');
+
+    // أظهر زر المشاركة فقط إذا الجهاز يدعمها
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(navigator.share && isMobile){
+      nativeBtn.style.display = 'flex';
+    }
   } catch(err){
     console.error('Card draw error:', err);
     loading.innerHTML = '<span style="color:#ff8888;font-size:13px">⚠️ تعذّر إنشاء الصورة</span>';
@@ -1302,29 +1307,28 @@ async function downloadCard(){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function nativeShare(){
+// ⚠️ المهم: هذه الدالة تُستدعى مباشرة من onclick
+// navigator.share يجب أن يُستدعى بدون أي await قبله
+// لأن المتصفح يشترط أن يكون في نفس لحظة الضغط (user gesture)
+function nativeShare(){
   if(!capturedBlob || !navigator.share) return;
 
   const file = new File([capturedBlob], 'بطاقة-عيد-مبارك.png', { type: 'image/png' });
 
-  // Strategy 1: try sharing the image file directly
-  try {
-    await navigator.share({ files: [file], title: 'بطاقة عيد مبارك' });
-    return; // success
-  } catch(err){
-    if(err.name === 'AbortError') return; // user cancelled — do nothing
-    // Share with file failed (device doesn't support) — try title-only share
-  }
+  // استدعاء مباشر — بدون await — للحفاظ على user gesture
+  navigator.share({ files: [file], title: 'بطاقة عيد مبارك' })
+    .then(() => {
+      // تمت المشاركة بنجاح
+    })
+    .catch(err => {
+      if(err.name === 'AbortError') return; // المستخدم ألغى
 
-  // Strategy 2: share title only (no file, no URL) — opens share sheet at least
-  try {
-    await navigator.share({ title: 'بطاقة عيد مبارك', text: 'عيد مبارك 🌙' });
-  } catch(err){
-    if(err.name !== 'AbortError'){
-      // Everything failed — download as fallback
-      downloadCard();
-    }
-  }
+      // فشل مشاركة الملف — جرب بدون ملف
+      navigator.share({ title: 'بطاقة عيد مبارك', text: 'عيد مبارك 🌙' })
+        .catch(err2 => {
+          if(err2.name !== 'AbortError') downloadCard();
+        });
+    });
 }
 
 function copyShareLink(){
