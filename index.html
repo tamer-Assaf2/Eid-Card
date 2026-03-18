@@ -1030,8 +1030,12 @@ function applyPhoto(){
   tmpImg.src = imgSrc;
 }
 
-// ══════════ SHARE WITH SCREENSHOT ══════════
+// ══════════ SHARE — DIRECT CANVAS DRAW ══════════
 let capturedBlob = null;
+
+const CARD_W = 480;
+const CARD_H = 780;
+const DPR    = 2; // retina
 
 async function share(){
   const backdrop  = document.getElementById('share-backdrop');
@@ -1039,7 +1043,6 @@ async function share(){
   const preview   = document.getElementById('share-preview-img');
   const nativeBtn = document.getElementById('native-share-btn');
 
-  // Reset modal state
   backdrop.classList.add('open');
   document.body.style.overflow = 'hidden';
   loading.classList.remove('hidden');
@@ -1047,53 +1050,237 @@ async function share(){
   preview.style.display = 'none';
   capturedBlob = null;
 
-  // Show native share only if browser supports FILE sharing specifically
-  // We test with a dummy blob — the real check happens before actual share
   const testFile = new File([''], 'test.png', { type: 'image/png' });
   const canNativeShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [testFile] }));
   nativeBtn.style.display = canNativeShare ? 'flex' : 'none';
 
-  // --- Elements to HIDE during capture ---
-  const shareBtn   = document.querySelector('.btn-share');
-  const starsRow   = document.querySelector('.stars-row');
-
-  // Use data-html2canvas-ignore attribute — cleanest approach
-  const hideTargets = [shareBtn, starsRow].filter(Boolean);
-  hideTargets.forEach(el => el.setAttribute('data-html2canvas-ignore', 'true'));
-
   try {
-    const card = document.getElementById('card');
-
-    const canvas = await html2canvas(card, {
-      useCORS:       true,
-      allowTaint:    false,
-      scale:         3,                  // ← high-res (3× pixel density)
-      backgroundColor: '#0a1628',
-      logging:       false,
-      imageTimeout:  8000,
-      onclone: (doc) => {
-        // Extra safety: hide btn-share inside the clone too
-        doc.querySelectorAll('[data-html2canvas-ignore]').forEach(el => {
-          el.style.visibility = 'hidden';
-        });
-      }
-    });
-
-    canvas.toBlob(blob => {
-      capturedBlob = blob;
-      const url = URL.createObjectURL(blob);
-      preview.src = url;
-      preview.style.display = 'block';
-      loading.classList.add('hidden');
-    }, 'image/png', 1.0);
-
+    const blob = await buildCardImage();
+    capturedBlob = blob;
+    const url = URL.createObjectURL(blob);
+    preview.src = url;
+    preview.style.display = 'block';
+    loading.classList.add('hidden');
   } catch(err){
-    console.error('Screenshot error:', err);
-    loading.innerHTML = '<span style="color:#ff8888;font-size:13px">⚠️ تعذّر التقاط الصورة</span>';
-  } finally {
-    // Always restore hidden elements
-    hideTargets.forEach(el => el.removeAttribute('data-html2canvas-ignore'));
+    console.error('Card draw error:', err);
+    loading.innerHTML = '<span style="color:#ff8888;font-size:13px">⚠️ تعذّر إنشاء الصورة</span>';
   }
+}
+
+// ─── Draw entire card onto an offscreen Canvas ───
+function buildCardImage(){
+  return new Promise((resolve, reject) => {
+    const W = CARD_W * DPR;
+    const H = CARD_H * DPR;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+
+    /* helpers */
+    function rr(x,y,w,h,r){
+      ctx.beginPath();
+      ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+      ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r);
+      ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+      ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+      ctx.lineTo(x,y+r);
+      ctx.quadraticCurveTo(x,y,x+r,y);
+      ctx.closePath();
+    }
+
+    function wrapText(text, x, y, maxW, lineH){
+      // RTL-aware simple word wrap
+      const words = text.split(' ');
+      let line = '';
+      for(const word of words){
+        const test = line ? line + ' ' + word : word;
+        if(ctx.measureText(test).width > maxW && line){
+          ctx.fillText(line, x, y); y += lineH; line = word;
+        } else { line = test; }
+      }
+      if(line) ctx.fillText(line, x, y);
+      return y + lineH;
+    }
+
+    /* ── 1. Card bg ── */
+    rr(0,0,CARD_W,CARD_H,32);
+    ctx.fillStyle = '#0a1628'; ctx.fill();
+    ctx.save(); ctx.clip();
+
+    /* ── 2. Grid pattern ── */
+    ctx.save(); ctx.globalAlpha = 0.035; ctx.strokeStyle = '#d4a843'; ctx.lineWidth = 0.8;
+    for(let i = -CARD_H; i < CARD_W+CARD_H; i+=40){
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+CARD_H,CARD_H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i-CARD_H,CARD_H); ctx.stroke();
+    }
+    ctx.restore();
+
+    /* ── 3. Glow blobs ── */
+    function blob(cx,cy,r,c){
+      const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      g.addColorStop(0,c); g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    }
+    blob(CARD_W-50,-30,200,'rgba(0,201,177,0.2)');
+    blob(50,CARD_H-30,170,'rgba(123,94,167,0.22)');
+    blob(CARD_W/2,CARD_H/2,140,'rgba(212,168,67,0.09)');
+
+    /* ── Top glow bar ── */
+    const tgl = ctx.createLinearGradient(0,0,CARD_W,0);
+    tgl.addColorStop(0,'transparent'); tgl.addColorStop(0.25,'#00c9b1');
+    tgl.addColorStop(0.55,'#f0cc6e'); tgl.addColorStop(0.8,'#7b5ea7');
+    tgl.addColorStop(1,'transparent');
+    ctx.fillStyle = tgl; ctx.fillRect(0,0,CARD_W,3);
+
+    const PHOTO_H = 300;
+
+    /* ── Photo zone then rest ── */
+    function drawContent(){
+      /* overlay gradient on photo zone */
+      const ov = ctx.createLinearGradient(0, PHOTO_H*0.3, 0, PHOTO_H);
+      ov.addColorStop(0,'rgba(4,13,26,0)');
+      ov.addColorStop(0.6,'rgba(4,13,26,0.55)');
+      ov.addColorStop(1,'rgba(10,22,40,0.98)');
+      ctx.fillStyle = ov; ctx.fillRect(0,0,CARD_W,PHOTO_H);
+
+      /* Badge */
+      ctx.save();
+      rr(16,16,136,30,15); ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fill();
+      ctx.strokeStyle='rgba(212,168,67,0.4)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle='#f0cc6e'; ctx.font='bold 10px Tajawal,Arial';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('✦ عيد مبارك ✦', 84, 31);
+      ctx.restore();
+
+      /* Moon */
+      ctx.save();
+      ctx.fillStyle='#d4a843'; ctx.globalAlpha=0.9;
+      ctx.beginPath(); ctx.arc(CARD_W-30,30,15,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#0a1628'; ctx.globalAlpha=1;
+      ctx.beginPath(); ctx.arc(CARD_W-22,25,13,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      /* ─ Content below photo ─ */
+      const base = PHOTO_H + 28;
+
+      /* Divider */
+      ctx.save();
+      const dL=ctx.createLinearGradient(32,0,CARD_W/2-40,0);
+      dL.addColorStop(0,'transparent'); dL.addColorStop(1,'rgba(212,168,67,0.4)');
+      ctx.strokeStyle=dL; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(32,base); ctx.lineTo(CARD_W/2-40,base); ctx.stroke();
+      const dR=ctx.createLinearGradient(CARD_W/2+40,0,CARD_W-32,0);
+      dR.addColorStop(0,'rgba(212,168,67,0.4)'); dR.addColorStop(1,'transparent');
+      ctx.strokeStyle=dR;
+      ctx.beginPath(); ctx.moveTo(CARD_W/2+40,base); ctx.lineTo(CARD_W-32,base); ctx.stroke();
+      ctx.fillStyle='#d4a843'; ctx.font='12px Arial';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('✦ ☽ ✦', CARD_W/2, base);
+      ctx.restore();
+
+      /* Main title */
+      const titleText = document.getElementById('main-title').textContent.trim() || 'عيد مبارك';
+      ctx.save();
+      const tg2=ctx.createLinearGradient(60,0,CARD_W-60,0);
+      tg2.addColorStop(0,'#f0cc6e'); tg2.addColorStop(0.4,'#d4a843');
+      tg2.addColorStop(0.6,'#ffffff'); tg2.addColorStop(1,'#f0cc6e');
+      ctx.fillStyle=tg2;
+      ctx.font='900 52px Tajawal,Arial'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(titleText, CARD_W/2, base+14);
+      ctx.restore();
+
+      /* Sub title */
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.font='300 15px Tajawal,Arial'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText('Eid Mubarak', CARD_W/2, base+78);
+
+      /* Message box */
+      const msgY = base+112, msgW = CARD_W-64, msgH = 130;
+      ctx.save();
+      rr(32,msgY,msgW,msgH,20);
+      ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fill();
+      ctx.strokeStyle='rgba(212,168,67,0.15)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle='#d4a843'; ctx.font='bold 26px serif';
+      ctx.textAlign='right'; ctx.textBaseline='top';
+      ctx.fillText('❝', CARD_W-46, msgY-12);
+      ctx.restore();
+
+      /* Message text — split on \n */
+      const rawMsg = document.getElementById('message-text').innerText || '';
+      const lines  = rawMsg.split('\n').map(l=>l.trim()).filter(Boolean);
+      ctx.fillStyle='rgba(255,255,255,0.82)';
+      ctx.font='400 14.5px Tajawal,Arial'; ctx.textAlign='center'; ctx.textBaseline='top';
+      const lh=26, totalH=lines.length*lh;
+      let ly = msgY + (msgH-totalH)/2;
+      lines.forEach(line=>{ ctx.fillText(line, CARD_W/2, ly); ly+=lh; });
+
+      /* Name */
+      const nameY = msgY+msgH+20;
+      ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.font='300 11px Tajawal,Arial';
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText('من', CARD_W/2-4, nameY+8);
+      ctx.fillStyle='#00c9b1'; ctx.font='700 15px Tajawal,Arial';
+      ctx.textAlign='left';
+      ctx.fillText(document.getElementById('name-display').textContent||'', CARD_W/2+8, nameY+8);
+
+      /* Dots */
+      const dotsY = nameY+34;
+      [-22,0,22].forEach((ox,i)=>{
+        if(i===1){
+          const dg=ctx.createLinearGradient(CARD_W/2-10,0,CARD_W/2+10,0);
+          dg.addColorStop(0,'#00c9b1'); dg.addColorStop(1,'#d4a843');
+          ctx.fillStyle=dg;
+          ctx.beginPath(); ctx.roundRect(CARD_W/2-10,dotsY,20,5,3); ctx.fill();
+        } else {
+          ctx.fillStyle='rgba(212,168,67,0.3)';
+          ctx.beginPath(); ctx.arc(CARD_W/2+ox,dotsY+2,4,0,Math.PI*2); ctx.fill();
+        }
+      });
+
+      ctx.restore(); // end card clip
+
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob null')), 'image/png');
+    }
+
+    /* ── Draw photo (or placeholder) then call drawContent ── */
+    const cardImg = document.getElementById('card-img');
+    const hasPhoto = cardImg && cardImg.src && cardImg.style.display !== 'none'
+                     && !cardImg.src.endsWith(window.location.pathname);
+
+    if(hasPhoto){
+      const img = new Image();
+      img.onload = () => {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0,0,CARD_W,PHOTO_H); ctx.clip();
+        const ir=img.width/img.height, zr=CARD_W/PHOTO_H;
+        let dw,dh,dx,dy;
+        if(ir>zr){ dh=PHOTO_H; dw=dh*ir; dx=(CARD_W-dw)/2; dy=0; }
+        else      { dw=CARD_W; dh=dw/ir; dx=0; dy=(PHOTO_H-dh)/2; }
+        ctx.drawImage(img,dx,dy,dw,dh);
+        ctx.restore();
+        drawContent();
+      };
+      img.onerror = () => {
+        drawPlaceholder(); drawContent();
+      };
+      img.src = cardImg.src;
+    } else {
+      drawPlaceholder(); drawContent();
+    }
+
+    function drawPlaceholder(){
+      const pg=ctx.createLinearGradient(0,0,CARD_W,PHOTO_H);
+      pg.addColorStop(0,'#0d1f3a'); pg.addColorStop(1,'#0a1628');
+      ctx.fillStyle=pg; ctx.fillRect(0,0,CARD_W,PHOTO_H);
+      ctx.font='44px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🌙', CARD_W/2, PHOTO_H/2);
+    }
+  });
 }
 
 function closeShareModal(){
@@ -1104,56 +1291,33 @@ function closeShareModal(){
 async function downloadCard(){
   if(!capturedBlob) return;
   const url = URL.createObjectURL(capturedBlob);
-  const a   = document.createElement('a');
-  a.href     = url;
-  a.download = 'بطاقة-عيد-مبارك.png';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  // Revoke after a tick to allow download to start
+  const a = document.createElement('a');
+  a.href = url; a.download = 'بطاقة-عيد-مبارك.png';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function nativeShare(){
   if(!capturedBlob) return;
-
   const file = new File([capturedBlob], 'بطاقة-عيد-مبارك.png', { type: 'image/png' });
-
-  // Only proceed if browser can actually share this file
-  if(!navigator.share || !navigator.canShare || !navigator.canShare({ files: [file] })){
-    // Fallback: just download the image
-    downloadCard();
-    return;
+  if(!navigator.share || !navigator.canShare || !navigator.canShare({ files:[file] })){
+    downloadCard(); return;
   }
-
-  try {
-    // Share the image file ONLY — no text, no URL
-    await navigator.share({ files: [file] });
-  } catch(err){
-    if(err.name !== 'AbortError'){
-      console.error('Share error:', err);
-      // If sharing fails for any reason, fall back to download
-      downloadCard();
-    }
-  }
+  try { await navigator.share({ files:[file] }); }
+  catch(err){ if(err.name !== 'AbortError'){ console.error(err); downloadCard(); } }
 }
 
 function copyShareLink(){
-  navigator.clipboard.writeText(location.href).then(()=>{
+  const done = () => {
     const el = document.getElementById('copy-link-text');
     el.textContent = 'تم النسخ ✓';
     setTimeout(() => el.textContent = 'نسخ الرابط', 2000);
-  }).catch(() => {
-    // Fallback for browsers that block clipboard without HTTPS
+  };
+  navigator.clipboard.writeText(location.href).then(done).catch(() => {
     const ta = document.createElement('textarea');
-    ta.value = location.href;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    const el = document.getElementById('copy-link-text');
-    el.textContent = 'تم النسخ ✓';
-    setTimeout(() => el.textContent = 'نسخ الرابط', 2000);
+    ta.value = location.href; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); done();
   });
 }
 </script>
