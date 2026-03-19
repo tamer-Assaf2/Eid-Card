@@ -404,10 +404,18 @@
       .name-divider-line {
         height: 1px;
         width: 50px;
-        background: linear-gradient(90deg, transparent, rgba(212,168,67,0.4));
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(212, 168, 67, 0.4)
+        );
       }
       .name-divider-line.r {
-        background: linear-gradient(90deg, rgba(212,168,67,0.4), transparent);
+        background: linear-gradient(
+          90deg,
+          rgba(212, 168, 67, 0.4),
+          transparent
+        );
       }
       .name-label {
         font-size: 11px;
@@ -419,7 +427,11 @@
         font-size: 20px;
         font-weight: 700;
         letter-spacing: 1.5px;
-        background: linear-gradient(135deg, var(--accent) 0%, var(--gold-light) 100%);
+        background: linear-gradient(
+          135deg,
+          var(--accent) 0%,
+          var(--gold-light) 100%
+        );
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -958,7 +970,11 @@
       .share-preview-wrap {
         position: relative;
         width: 100%;
-        background: radial-gradient(ellipse at center, #0d1e38 0%, #060e1c 100%);
+        background: radial-gradient(
+          ellipse at center,
+          #0d1e38 0%,
+          #060e1c 100%
+        );
         display: flex;
         align-items: center;
         justify-content: center;
@@ -971,8 +987,20 @@
         position: absolute;
         inset: 0;
         background-image:
-          repeating-linear-gradient(45deg, rgba(212,168,67,0.03) 0, rgba(212,168,67,0.03) 1px, transparent 0, transparent 50%),
-          repeating-linear-gradient(-45deg, rgba(212,168,67,0.03) 0, rgba(212,168,67,0.03) 1px, transparent 0, transparent 50%);
+          repeating-linear-gradient(
+            45deg,
+            rgba(212, 168, 67, 0.03) 0,
+            rgba(212, 168, 67, 0.03) 1px,
+            transparent 0,
+            transparent 50%
+          ),
+          repeating-linear-gradient(
+            -45deg,
+            rgba(212, 168, 67, 0.03) 0,
+            rgba(212, 168, 67, 0.03) 1px,
+            transparent 0,
+            transparent 50%
+          );
         background-size: 30px 30px;
         pointer-events: none;
         z-index: 0;
@@ -983,7 +1011,11 @@
         position: absolute;
         width: 200px;
         height: 200px;
-        background: radial-gradient(circle, rgba(0,201,177,0.12) 0%, transparent 70%);
+        background: radial-gradient(
+          circle,
+          rgba(0, 201, 177, 0.12) 0%,
+          transparent 70%
+        );
         border-radius: 50%;
         pointer-events: none;
         z-index: 0;
@@ -998,16 +1030,24 @@
           0 0 0 1.5px rgba(212, 168, 67, 0.35),
           0 12px 40px rgba(0, 0, 0, 0.7),
           0 0 50px rgba(0, 201, 177, 0.15),
-          0 0 0 6px rgba(255,255,255,0.03);
+          0 0 0 6px rgba(255, 255, 255, 0.03);
         object-fit: contain;
         position: relative;
         z-index: 2;
-        transition: transform 0.35s ease, box-shadow 0.35s ease;
+        transition:
+          transform 0.35s ease,
+          box-shadow 0.35s ease;
         animation: previewFadeIn 0.4s ease both;
       }
       @keyframes previewFadeIn {
-        from { opacity: 0; transform: scale(0.9) translateY(10px); }
-        to   { opacity: 1; transform: scale(1) translateY(0); }
+        from {
+          opacity: 0;
+          transform: scale(0.9) translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
       }
       #share-preview-img:hover {
         transform: scale(1.04) translateY(-3px);
@@ -1740,7 +1780,11 @@
 
           // --- PHOTO DRAWING: استخدام صورة البطاقة المعالجة مباشرة ---
           const cardImg = document.getElementById("card-img");
-          const hasPhoto = cardImg && cardImg.style.display !== "none" && cardImg.src && !cardImg.src.endsWith("#");
+          const hasPhoto =
+            cardImg &&
+            cardImg.style.display !== "none" &&
+            cardImg.src &&
+            !cardImg.src.endsWith("#");
 
           if (hasPhoto) {
             const img = new Image();
@@ -1919,7 +1963,8 @@
 
             // Name section — elegant with divider lines
             const nameY = msgY + msgH + 18;
-            const nameText = document.getElementById("name-display").textContent || "";
+            const nameText =
+              document.getElementById("name-display").textContent || "";
 
             // Divider lines with label in center
             const labelText = "❖ من ❖";
@@ -1929,7 +1974,12 @@
             const labelW = ctx.measureText(labelText).width + 20;
             const lineY = nameY + 8;
 
-            const ndL = ctx.createLinearGradient(32, 0, CARD_W / 2 - labelW / 2 - 8, 0);
+            const ndL = ctx.createLinearGradient(
+              32,
+              0,
+              CARD_W / 2 - labelW / 2 - 8,
+              0,
+            );
             ndL.addColorStop(0, "transparent");
             ndL.addColorStop(1, "rgba(212,168,67,0.4)");
             ctx.strokeStyle = ndL;
@@ -1939,7 +1989,12 @@
             ctx.lineTo(CARD_W / 2 - labelW / 2 - 8, lineY);
             ctx.stroke();
 
-            const ndR = ctx.createLinearGradient(CARD_W / 2 + labelW / 2 + 8, 0, CARD_W - 32, 0);
+            const ndR = ctx.createLinearGradient(
+              CARD_W / 2 + labelW / 2 + 8,
+              0,
+              CARD_W - 32,
+              0,
+            );
             ndR.addColorStop(0, "rgba(212,168,67,0.4)");
             ndR.addColorStop(1, "transparent");
             ctx.strokeStyle = ndR;
@@ -1952,7 +2007,12 @@
             ctx.fillText(labelText, CARD_W / 2, lineY);
 
             // Name gradient text
-            const ng = ctx.createLinearGradient(CARD_W / 2 - 80, 0, CARD_W / 2 + 80, 0);
+            const ng = ctx.createLinearGradient(
+              CARD_W / 2 - 80,
+              0,
+              CARD_W / 2 + 80,
+              0,
+            );
             ng.addColorStop(0, "#00c9b1");
             ng.addColorStop(1, "#f0cc6e");
             ctx.fillStyle = ng;
@@ -1963,7 +2023,12 @@
 
             // Underline accent
             const ulW = Math.min(ctx.measureText(nameText).width * 0.5, 60);
-            const ulG = ctx.createLinearGradient(CARD_W / 2 - ulW / 2, 0, CARD_W / 2 + ulW / 2, 0);
+            const ulG = ctx.createLinearGradient(
+              CARD_W / 2 - ulW / 2,
+              0,
+              CARD_W / 2 + ulW / 2,
+              0,
+            );
             ulG.addColorStop(0, "#00c9b1");
             ulG.addColorStop(1, "#d4a843");
             ctx.fillStyle = ulG;
@@ -1977,7 +2042,12 @@
             const dotsY = nameY + 56;
             [-22, 0, 22].forEach((ox, i) => {
               if (i === 1) {
-                const dg = ctx.createLinearGradient(CARD_W / 2 - 10, 0, CARD_W / 2 + 10, 0);
+                const dg = ctx.createLinearGradient(
+                  CARD_W / 2 - 10,
+                  0,
+                  CARD_W / 2 + 10,
+                  0,
+                );
                 dg.addColorStop(0, "#00c9b1");
                 dg.addColorStop(1, "#d4a843");
                 ctx.fillStyle = dg;

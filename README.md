@@ -48,7 +48,7 @@
 
 | البطاقة الرئيسية | Photo Preview Modal |
 |:-:|:-:|
-| ![Card](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/1.png) | ![Preview](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/2.png) |
+| ![Card](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/1.png) | ![Preview](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/2.png) | ![Preview](https://raw.githubusercontent.com/tamer-Assaf2/Eid-Card/main/photo/3.png) |
 
 </div>
 
