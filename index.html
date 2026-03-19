@@ -1074,221 +1074,212 @@ async function share(){
 }
 
 // ─── Draw entire card onto an offscreen Canvas ───
-function buildCardImage(){
+function buildCardImage() {
   return new Promise((resolve, reject) => {
     const W = CARD_W * DPR;
     const H = CARD_H * DPR;
 
     const canvas = document.createElement('canvas');
-    canvas.width  = W;
+    canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.scale(DPR, DPR);
 
-    /* helpers */
-    function rr(x,y,w,h,r){
+    // helpers
+    function rr(x, y, w, h, r) {
       ctx.beginPath();
-      ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
-      ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-      ctx.lineTo(x+w,y+h-r);
-      ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-      ctx.lineTo(x+r,y+h);
-      ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-      ctx.lineTo(x,y+r);
-      ctx.quadraticCurveTo(x,y,x+r,y);
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
       ctx.closePath();
     }
 
-    function wrapText(text, x, y, maxW, lineH){
-      // RTL-aware simple word wrap
-      const words = text.split(' ');
-      let line = '';
-      for(const word of words){
-        const test = line ? line + ' ' + word : word;
-        if(ctx.measureText(test).width > maxW && line){
-          ctx.fillText(line, x, y); y += lineH; line = word;
-        } else { line = test; }
-      }
-      if(line) ctx.fillText(line, x, y);
-      return y + lineH;
-    }
-
-    /* ── 1. Card bg ── */
-    rr(0,0,CARD_W,CARD_H,32);
+    // 1. Card bg
+    rr(0, 0, CARD_W, CARD_H, 32);
     ctx.fillStyle = '#0a1628'; ctx.fill();
     ctx.save(); ctx.clip();
 
-    /* ── 2. Grid pattern ── */
+    // 2. Grid pattern
     ctx.save(); ctx.globalAlpha = 0.035; ctx.strokeStyle = '#d4a843'; ctx.lineWidth = 0.8;
-    for(let i = -CARD_H; i < CARD_W+CARD_H; i+=40){
-      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+CARD_H,CARD_H); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i-CARD_H,CARD_H); ctx.stroke();
+    for (let i = -CARD_H; i < CARD_W + CARD_H; i += 40) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + CARD_H, CARD_H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - CARD_H, CARD_H); ctx.stroke();
     }
     ctx.restore();
 
-    /* ── 3. Glow blobs ── */
-    function blob(cx,cy,r,c){
-      const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
-      g.addColorStop(0,c); g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    // 3. Glow blobs
+    function blob(cx, cy, r, c) {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     }
-    blob(CARD_W-50,-30,200,'rgba(0,201,177,0.2)');
-    blob(50,CARD_H-30,170,'rgba(123,94,167,0.22)');
-    blob(CARD_W/2,CARD_H/2,140,'rgba(212,168,67,0.09)');
+    blob(CARD_W - 50, -30, 200, 'rgba(0,201,177,0.2)');
+    blob(50, CARD_H - 30, 170, 'rgba(123,94,167,0.22)');
+    blob(CARD_W / 2, CARD_H / 2, 140, 'rgba(212,168,67,0.09)');
 
-    /* ── Top glow bar ── */
-    const tgl = ctx.createLinearGradient(0,0,CARD_W,0);
-    tgl.addColorStop(0,'transparent'); tgl.addColorStop(0.25,'#00c9b1');
-    tgl.addColorStop(0.55,'#f0cc6e'); tgl.addColorStop(0.8,'#7b5ea7');
-    tgl.addColorStop(1,'transparent');
-    ctx.fillStyle = tgl; ctx.fillRect(0,0,CARD_W,3);
+    // Top glow bar
+    const tgl = ctx.createLinearGradient(0, 0, CARD_W, 0);
+    tgl.addColorStop(0, 'transparent'); tgl.addColorStop(0.25, '#00c9b1');
+    tgl.addColorStop(0.55, '#f0cc6e'); tgl.addColorStop(0.8, '#7b5ea7');
+    tgl.addColorStop(1, 'transparent');
+    ctx.fillStyle = tgl; ctx.fillRect(0, 0, CARD_W, 3);
 
     const PHOTO_H = 300;
 
-    /* ── Photo zone then rest ── */
-    function drawContent(){
-      /* overlay gradient on photo zone */
-      const ov = ctx.createLinearGradient(0, PHOTO_H*0.3, 0, PHOTO_H);
-      ov.addColorStop(0,'rgba(4,13,26,0)');
-      ov.addColorStop(0.6,'rgba(4,13,26,0.55)');
-      ov.addColorStop(1,'rgba(10,22,40,0.98)');
-      ctx.fillStyle = ov; ctx.fillRect(0,0,CARD_W,PHOTO_H);
+    // --- PHOTO DRAWING WITH CROP/ZOOM/OFFSET ---
+    const cardImg = document.getElementById('card-img');
+    const hasPhoto = cardImg && cardImg.style.display !== 'none' && imgSrc;
+    if (hasPhoto) {
+      // استخدم نفس القيم من المعاينة
+      // إذا كانت الصورة مطبقة، استخدم آخر قيم zoom/offset/brightness/baseScale
+      let cropZoom = window.zoom || 100;
+      let cropBrightness = window.brightness || 100;
+      let cropOffsetX = window.offsetX || 0;
+      let cropOffsetY = window.offsetY || 0;
+      let cropBaseScale = prevImg && prevImg._baseScale ? prevImg._baseScale : 1;
 
-      /* Badge */
+      const img = new Image();
+      img.onload = () => {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, CARD_W, PHOTO_H); ctx.clip();
+        // نفس منطق applyPhoto
+        const s = cropBaseScale * (cropZoom / 100);
+        const natW = img.naturalWidth;
+        const natH = img.naturalHeight;
+        const drawW = natW * s;
+        const drawH = natH * s;
+        const drawX = CARD_W / 2 - drawW / 2 + cropOffsetX;
+        const drawY = PHOTO_H / 2 - drawH / 2 + cropOffsetY;
+        ctx.filter = `brightness(${cropBrightness}%)`;
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.filter = 'none';
+        ctx.restore();
+        drawContent();
+      };
+      img.onerror = () => { drawPlaceholder(); drawContent(); };
+      img.src = imgSrc;
+    } else {
+      drawPlaceholder(); drawContent();
+    }
+
+    function drawPlaceholder() {
+      const pg = ctx.createLinearGradient(0, 0, CARD_W, PHOTO_H);
+      pg.addColorStop(0, '#0d1f3a'); pg.addColorStop(1, '#0a1628');
+      ctx.fillStyle = pg; ctx.fillRect(0, 0, CARD_W, PHOTO_H);
+      ctx.font = '44px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🌙', CARD_W / 2, PHOTO_H / 2);
+    }
+
+    function drawContent() {
+      // overlay gradient on photo zone
+      const ov = ctx.createLinearGradient(0, PHOTO_H * 0.3, 0, PHOTO_H);
+      ov.addColorStop(0, 'rgba(4,13,26,0)');
+      ov.addColorStop(0.6, 'rgba(4,13,26,0.55)');
+      ov.addColorStop(1, 'rgba(10,22,40,0.98)');
+      ctx.fillStyle = ov; ctx.fillRect(0, 0, CARD_W, PHOTO_H);
+
+      // Badge
       ctx.save();
-      rr(16,16,136,30,15); ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fill();
-      ctx.strokeStyle='rgba(212,168,67,0.4)'; ctx.lineWidth=1; ctx.stroke();
-      ctx.fillStyle='#f0cc6e'; ctx.font='bold 10px Tajawal,Arial';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
+      rr(16, 16, 136, 30, 15); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(212,168,67,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#f0cc6e'; ctx.font = 'bold 10px Tajawal,Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('✦ عيد مبارك ✦', 84, 31);
       ctx.restore();
 
-      /* Moon */
+      // Moon
       ctx.save();
-      ctx.fillStyle='#d4a843'; ctx.globalAlpha=0.9;
-      ctx.beginPath(); ctx.arc(CARD_W-30,30,15,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#0a1628'; ctx.globalAlpha=1;
-      ctx.beginPath(); ctx.arc(CARD_W-22,25,13,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#d4a843'; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.arc(CARD_W - 30, 30, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0a1628'; ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(CARD_W - 22, 25, 13, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
 
-      /* ─ Content below photo ─ */
+      // Content below photo
       const base = PHOTO_H + 28;
 
-      /* Divider */
+      // Divider
       ctx.save();
-      const dL=ctx.createLinearGradient(32,0,CARD_W/2-40,0);
-      dL.addColorStop(0,'transparent'); dL.addColorStop(1,'rgba(212,168,67,0.4)');
-      ctx.strokeStyle=dL; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(32,base); ctx.lineTo(CARD_W/2-40,base); ctx.stroke();
-      const dR=ctx.createLinearGradient(CARD_W/2+40,0,CARD_W-32,0);
-      dR.addColorStop(0,'rgba(212,168,67,0.4)'); dR.addColorStop(1,'transparent');
-      ctx.strokeStyle=dR;
-      ctx.beginPath(); ctx.moveTo(CARD_W/2+40,base); ctx.lineTo(CARD_W-32,base); ctx.stroke();
-      ctx.fillStyle='#d4a843'; ctx.font='12px Arial';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('✦ ☽ ✦', CARD_W/2, base);
+      const dL = ctx.createLinearGradient(32, 0, CARD_W / 2 - 40, 0);
+      dL.addColorStop(0, 'transparent'); dL.addColorStop(1, 'rgba(212,168,67,0.4)');
+      ctx.strokeStyle = dL; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(32, base); ctx.lineTo(CARD_W / 2 - 40, base); ctx.stroke();
+      const dR = ctx.createLinearGradient(CARD_W / 2 + 40, 0, CARD_W - 32, 0);
+      dR.addColorStop(0, 'rgba(212,168,67,0.4)'); dR.addColorStop(1, 'transparent');
+      ctx.strokeStyle = dR;
+      ctx.beginPath(); ctx.moveTo(CARD_W / 2 + 40, base); ctx.lineTo(CARD_W - 32, base); ctx.stroke();
+      ctx.fillStyle = '#d4a843'; ctx.font = '12px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('✦ ☽ ✦', CARD_W / 2, base);
       ctx.restore();
 
-      /* Main title */
+      // Main title
       const titleText = document.getElementById('main-title').textContent.trim() || 'عيد مبارك';
       ctx.save();
-      const tg2=ctx.createLinearGradient(60,0,CARD_W-60,0);
-      tg2.addColorStop(0,'#f0cc6e'); tg2.addColorStop(0.4,'#d4a843');
-      tg2.addColorStop(0.6,'#ffffff'); tg2.addColorStop(1,'#f0cc6e');
-      ctx.fillStyle=tg2;
-      ctx.font='900 52px Tajawal,Arial'; ctx.textAlign='center'; ctx.textBaseline='top';
-      ctx.fillText(titleText, CARD_W/2, base+14);
+      const tg2 = ctx.createLinearGradient(60, 0, CARD_W - 60, 0);
+      tg2.addColorStop(0, '#f0cc6e'); tg2.addColorStop(0.4, '#d4a843');
+      tg2.addColorStop(0.6, '#ffffff'); tg2.addColorStop(1, '#f0cc6e');
+      ctx.fillStyle = tg2;
+      ctx.font = '900 52px Tajawal,Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(titleText, CARD_W / 2, base + 14);
       ctx.restore();
 
-      /* Sub title */
-      ctx.fillStyle='rgba(255,255,255,0.4)';
-      ctx.font='300 15px Tajawal,Arial'; ctx.textAlign='center'; ctx.textBaseline='top';
-      ctx.fillText('Eid Mubarak', CARD_W/2, base+78);
+      // Sub title
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '300 15px Tajawal,Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('Eid Mubarak', CARD_W / 2, base + 78);
 
-      /* Message box */
-      const msgY = base+112, msgW = CARD_W-64, msgH = 130;
+      // Message box
+      const msgY = base + 112, msgW = CARD_W - 64, msgH = 130;
       ctx.save();
-      rr(32,msgY,msgW,msgH,20);
-      ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fill();
-      ctx.strokeStyle='rgba(212,168,67,0.15)'; ctx.lineWidth=1; ctx.stroke();
-      ctx.fillStyle='#d4a843'; ctx.font='bold 26px serif';
-      ctx.textAlign='right'; ctx.textBaseline='top';
-      ctx.fillText('❝', CARD_W-46, msgY-12);
+      rr(32, msgY, msgW, msgH, 20);
+      ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(212,168,67,0.15)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#d4a843'; ctx.font = 'bold 26px serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText('❝', CARD_W - 46, msgY - 12);
       ctx.restore();
 
-      /* Message text — split on \n */
+      // Message text — split on \n
       const rawMsg = document.getElementById('message-text').innerText || '';
-      const lines  = rawMsg.split('\n').map(l=>l.trim()).filter(Boolean);
-      ctx.fillStyle='rgba(255,255,255,0.82)';
-      ctx.font='400 14.5px Tajawal,Arial'; ctx.textAlign='center'; ctx.textBaseline='top';
-      const lh=26, totalH=lines.length*lh;
-      let ly = msgY + (msgH-totalH)/2;
-      lines.forEach(line=>{ ctx.fillText(line, CARD_W/2, ly); ly+=lh; });
+      const lines = rawMsg.split('\n').map(l => l.trim()).filter(Boolean);
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.font = '400 14.5px Tajawal,Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      const lh = 26, totalH = lines.length * lh;
+      let ly = msgY + (msgH - totalH) / 2;
+      lines.forEach(line => { ctx.fillText(line, CARD_W / 2, ly); ly += lh; });
 
-      /* Name */
-      const nameY = msgY+msgH+20;
-      ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.font='300 11px Tajawal,Arial';
-      ctx.textAlign='right'; ctx.textBaseline='middle';
-      ctx.fillText('من', CARD_W/2-4, nameY+8);
-      ctx.fillStyle='#00c9b1'; ctx.font='700 15px Tajawal,Arial';
-      ctx.textAlign='left';
-      ctx.fillText(document.getElementById('name-display').textContent||'', CARD_W/2+8, nameY+8);
+      // Name
+      const nameY = msgY + msgH + 20;
+      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.font = '300 11px Tajawal,Arial';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText('من', CARD_W / 2 - 4, nameY + 8);
+      ctx.fillStyle = '#00c9b1'; ctx.font = '700 15px Tajawal,Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(document.getElementById('name-display').textContent || '', CARD_W / 2 + 8, nameY + 8);
 
-      /* Dots */
-      const dotsY = nameY+34;
-      [-22,0,22].forEach((ox,i)=>{
-        if(i===1){
-          const dg=ctx.createLinearGradient(CARD_W/2-10,0,CARD_W/2+10,0);
-          dg.addColorStop(0,'#00c9b1'); dg.addColorStop(1,'#d4a843');
-          ctx.fillStyle=dg;
-          ctx.beginPath(); ctx.roundRect(CARD_W/2-10,dotsY,20,5,3); ctx.fill();
+      // Dots
+      const dotsY = nameY + 34;
+      [-22, 0, 22].forEach((ox, i) => {
+        if (i === 1) {
+          const dg = ctx.createLinearGradient(CARD_W / 2 - 10, 0, CARD_W / 2 + 10, 0);
+          dg.addColorStop(0, '#00c9b1'); dg.addColorStop(1, '#d4a843');
+          ctx.fillStyle = dg;
+          ctx.beginPath(); ctx.roundRect(CARD_W / 2 - 10, dotsY, 20, 5, 3); ctx.fill();
         } else {
-          ctx.fillStyle='rgba(212,168,67,0.3)';
-          ctx.beginPath(); ctx.arc(CARD_W/2+ox,dotsY+2,4,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = 'rgba(212,168,67,0.3)';
+          ctx.beginPath(); ctx.arc(CARD_W / 2 + ox, dotsY + 2, 4, 0, Math.PI * 2); ctx.fill();
         }
       });
 
       ctx.restore(); // end card clip
 
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob null')), 'image/png');
-    }
-
-    /* ── Draw photo (or placeholder) then call drawContent ── */
-    const cardImg = document.getElementById('card-img');
-    const hasPhoto = cardImg && cardImg.style.display !== 'none' && imgSrc;
-    // Use imgSrc (original base64 from FileReader) — never cardImg.src
-    // cardImg.src is a processed dataURL but imgSrc is the raw base64 which
-    // is guaranteed to load without CORS/tainted-canvas issues on HTTPS.
-
-    if(hasPhoto){
-      const img = new Image();
-      img.onload = () => {
-        ctx.save();
-        ctx.beginPath(); ctx.rect(0,0,CARD_W,PHOTO_H); ctx.clip();
-        // cover-fit: match the cropped view from applyPhoto
-        const ir=img.width/img.height, zr=CARD_W/PHOTO_H;
-        let dw,dh,dx,dy;
-        if(ir>zr){ dh=PHOTO_H; dw=dh*ir; dx=(CARD_W-dw)/2; dy=0; }
-        else      { dw=CARD_W; dh=dw/ir; dx=0; dy=(PHOTO_H-dh)/2; }
-        ctx.filter = `brightness(${brightness}%)`;
-        ctx.drawImage(img,dx,dy,dw,dh);
-        ctx.filter = 'none';
-        ctx.restore();
-        drawContent();
-      };
-      img.onerror = () => { drawPlaceholder(); drawContent(); };
-      // Use the original base64 source — avoids any tainted canvas issues
-      img.src = imgSrc;
-    } else {
-      drawPlaceholder(); drawContent();
-    }
-
-    function drawPlaceholder(){
-      const pg=ctx.createLinearGradient(0,0,CARD_W,PHOTO_H);
-      pg.addColorStop(0,'#0d1f3a'); pg.addColorStop(1,'#0a1628');
-      ctx.fillStyle=pg; ctx.fillRect(0,0,CARD_W,PHOTO_H);
-      ctx.font='44px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('🌙', CARD_W/2, PHOTO_H/2);
     }
   });
 }
